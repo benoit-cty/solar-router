@@ -90,53 +90,68 @@ WiFiClient client;
 // Unique ID must be set for MQTT
 HADevice device(MQTT_TOPIC_NAME);
 HAMqtt mqtt(client, device);
+/* MQTT Devices */
+// Mode Auto ON/OFF
+
+// Power 1 in %
+HASensorNumber power1("Power output 1 in %", HASensorNumber::PrecisionP1);
+// PV Usage in W
+HASensorNumber production("surplus / consommation", HASensorNumber::PrecisionP1);
+// Power send to boiler in W
+HASensorNumber power_boiler("puissance envoyée au ballon", HASensorNumber::PrecisionP1);
+// Energy saved
+HASensorNumber energy_saved("Energy saved", HASensorNumber::PrecisionP1);
+// Dimmer 1 output in %
+HASensorNumber dimmer_output("Dimmer output", HASensorNumber::PrecisionP1);
+
+
 // By default HAHVAC supports only reporting of the temperature.
 // You can enable feature you need using the second argument of the constructor.
 // Please check the documentation of the HAHVAC class.
-HAHVAC hvac(
-  "boiler",
-  HAHVAC::TargetTemperatureFeature | HAHVAC::PowerFeature | HAHVAC::ModesFeature
-);
+// HAHVAC hvac(
+//   "boiler",
+//   HAHVAC::TargetTemperatureFeature | HAHVAC::PowerFeature | HAHVAC::ModesFeature
+// );
 
 unsigned long lastTempPublishAt = 0;
 float lastTemp = 0;
 
-void onTargetTemperatureCommand(HANumeric temperature, HAHVAC* sender) {
-    float temperatureFloat = temperature.toFloat();
+// void onTargetTemperatureCommand(HANumeric temperature, HAHVAC* sender) {
+//     float temperatureFloat = temperature.toFloat();
 
-    Serial.print("Target temperature: ");
-    Serial.println(temperatureFloat);
+//     Serial.print("Target temperature: ");
+//     Serial.println(temperatureFloat);
 
-    sender->setTargetTemperature(temperature); // report target temperature back to the HA panel
-}
+//     sender->setTargetTemperature(temperature); // report target temperature back to the HA panel
+// }
 
-void onPowerCommand(bool state, HAHVAC* sender) {
-  if (state) {
-    Serial.println("Power on");
-  } else {
-    Serial.println("Power off");
-  }
-}
+// void onPowerCommand(bool state, HAHVAC* sender) {
+//   if (state) {
+//     Serial.println("Power on");
+//   } else {
+//     Serial.println("Power off");
+//   }
+// }
 
 
-void onModeCommand(HAHVAC::Mode mode, HAHVAC* sender) {
-    Serial.print("Mode: ");
-    if (mode == HAHVAC::OffMode) {
-        Serial.println("off");
-    } else if (mode == HAHVAC::AutoMode) {
-        Serial.println("auto");
-    } else if (mode == HAHVAC::CoolMode) {
-        Serial.println("cool");
-    } else if (mode == HAHVAC::HeatMode) {
-        Serial.println("heat");
-    } else if (mode == HAHVAC::DryMode) {
-        Serial.println("dry");
-    } else if (mode == HAHVAC::FanOnlyMode) {
-        Serial.println("fan only");
-    }
+// void onModeCommand(HAHVAC::Mode mode, HAHVAC* sender) {
+//     Serial.print("Mode: ");
+//     if (mode == HAHVAC::OffMode) {
+//         Serial.println("off");
+//     } else if (mode == HAHVAC::AutoMode) {
+//         Serial.println("auto");
+//     } else if (mode == HAHVAC::CoolMode) {
+//         Serial.println("cool");
+//     } else if (mode == HAHVAC::HeatMode) {
+//         Serial.println("heat");
+//     } else if (mode == HAHVAC::DryMode) {
+//         Serial.println("dry");
+//     } else if (mode == HAHVAC::FanOnlyMode) {
+//         Serial.println("fan only");
+//     }
 
-    sender->setMode(mode); // report mode back to the HA panel
-}
+//     sender->setMode(mode); // report mode back to the HA panel
+// }
 
 void setup() {
 
@@ -162,19 +177,42 @@ void setup() {
 
 
   // set device's details (optional)
-  device.setName("NodeMCU");
+  device.setName("Solar PV router");
   device.setSoftwareVersion("1.0.0");
+  device.setManufacturer("Le Profes'solaire");
+  device.setModel("ABC-123");
+  device.enableSharedAvailability();
+  device.enableLastWill();
+
+  /* MQTT Devices */
+  // Power 1 in %
+  // power1.setIcon("mdi:home");
+  //   power1.setName("Analog voltage");
+  //   power1.setUnitOfMeasurement("V");
+  // PV Usage in W
+  // HASensorNumber production("surplus / consommation", HASensorNumber::PrecisionP1);
+  // Power send to boiler in W
+  //HASensorNumber power_boiler("puissance envoyée au ballon", HASensorNumber::PrecisionP1);
+  // Energy saved
+  //HASensorNumber energy_saved("Energy saved", HASensorNumber::PrecisionP1);
+  energy_saved.setIcon("mdi:home");
+  energy_saved.setName("Energy saved");
+  energy_saved.setUnitOfMeasurement("kWh");
+  // Dimmer 1 output in %
+  //HASensorNumber dimmer_output("Dimmer output", HASensorNumber::PrecisionP1);
+
+
 
   // assign callbacks (optional)
-  hvac.onTargetTemperatureCommand(onTargetTemperatureCommand);
-  hvac.onPowerCommand(onPowerCommand);
-  hvac.onModeCommand(onModeCommand);
+  // hvac.onTargetTemperatureCommand(onTargetTemperatureCommand);
+  // hvac.onPowerCommand(onPowerCommand);
+  // hvac.onModeCommand(onModeCommand);
 
   // configure HVAC (optional)
-  hvac.setName("My HVAC");
-  hvac.setMinTemp(10);
-  hvac.setMaxTemp(30);
-  hvac.setTempStep(0.5);
+  // hvac.setName("My HVAC");
+  // hvac.setMinTemp(10);
+  // hvac.setMaxTemp(30);
+  // hvac.setTempStep(0.5);
 
   // You can set retain flag for the HA commands
   // hvac.setRetain(true);
@@ -185,7 +223,7 @@ void setup() {
 
   //Code pour créer un Task Core 0//
   xTaskCreatePinnedToCore(
-                    Task1code,   /* Task function. */
+                    Task1PowerMonitoring,   /* Task function. */
                     "Task1",     /* name of task. */
                     10000,       /* Stack size of task */
                     NULL,        /* parameter of the task */
@@ -196,7 +234,7 @@ void setup() {
 
   //Code pour créer un Task Core 1//
   xTaskCreatePinnedToCore(
-                    Task2code,   /* Task function. */
+                    Task2ExternalInterface,   /* Task function. */
                     "Task2",     /* name of task. */
                     10000,       /* Stack size of task */
                     NULL,        /* parameter of the task */
@@ -299,7 +337,7 @@ if (Sens2 == 0)
 
 
 
-void Task1code( void * pvParameters )
+void Task1PowerMonitoring( void * pvParameters )
 {
 for(;;) {
 
@@ -495,7 +533,7 @@ if ( Power1 < relayOff)
 
 //programme utilisant le Core 2 de l'ESP32//
 
-void Task2code( void * pvParameters ){
+void Task2ExternalInterface( void * pvParameters ){
 
 for(;;){
 
@@ -563,7 +601,8 @@ else
     mqtt.loop();
     // Send temp every 3 seconds
     if ((millis() - lastTempPublishAt) > 3000) {
-        hvac.setCurrentTemperature(lastTemp);
+        energy_saved.setValue(lastTemp);
+        // hvac.setCurrentTemperature(lastTemp);
         lastTempPublishAt = millis();
         lastTemp += 0.5;
     }
