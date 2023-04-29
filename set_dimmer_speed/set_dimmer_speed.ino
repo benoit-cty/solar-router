@@ -3,8 +3,11 @@
 
 #include <HardwareSerial.h>
 
-#define RXD2 16
-#define TXD2 17
+// #define RXD2 13 // For ESP8266
+// #define TXD2 15 // For ESP8266
+
+#define RXD2 16 // For ESP32 - ESP8266 RXD2 = GPIO 13
+#define TXD2 17 // For ESP32 -ESP8266 = GPIO 15
 
 void setup() {
   Serial.begin(115200);

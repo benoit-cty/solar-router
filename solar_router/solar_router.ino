@@ -6,19 +6,23 @@
  Utilisation des 2 Cores de l'Esp32
 */
 // Librairies //
+#include "config.h" // Local file to store your config, like  Wifi Password
 #include <HardwareSerial.h>
-#include <RBDdimmer.h>
-#include <U8g2lib.h>
+#include <RBDdimmer.h> // Download from https://github.com/RobotDynOfficial/RBDDimmer
+#include <U8g2lib.h> // Install "U8g2" from library manager 
 #include <Wire.h>
 #include <WiFi.h>
-#include <ESPDash.h>
-#include <AsyncTCP.h>
-#include <ESPAsyncWebServer.h>
-
+#include <ESPDash.h> // Install "ESP-DASH" from library manager 
+#include <AsyncTCP.h> // Install "AsyncTCP" from library manager 
+#include <ESPAsyncWebServer.h> // Download from https://github.com/me-no-dev/ESPAsyncWebServer
+// Add also "ArduinoJson"  from library manager
+#include <ArduinoHA.h> // Download it from https://github.com/dawidchyrzynski/arduino-home-assistant/releases/tag/2.0.0
+// And add PubSubClient (by Nick O'Leary) from library manager
 
 #define RXD2 16
 #define TXD2 17
-
+// Size of a MAC-address or BSSID
+#define WL_MAC_ADDR_LENGTH 6
 
 byte ByteArray[250];
 int ByteData[20];
@@ -51,8 +55,8 @@ float relayOff = 800;
 
 ///  configuration wifi ///
 
-const char* ssid = "votre point d'accès wifi";
-const char* password = "votre mot de passe wifi";
+const char* ssid = WIFI_SSID;
+const char* password = WIFI_PASSWORD;
 AsyncWebServer server(80);
 ESPDash dashboard(&server);
 Card button(&dashboard, BUTTON_CARD, "Auto");
@@ -79,6 +83,61 @@ const int Relay1 = 13;
 dimmerLamp dimmer1(pulsePin1, zeroCrossPin);
 dimmerLamp dimmer2(pulsePin2, zeroCrossPin);
 
+/* MQTT with Home Assistant
+ * From https://github.com/dawidchyrzynski/arduino-home-assistant/blob/main/examples/hvac/hvac.ino
+ */
+WiFiClient client;
+// Unique ID must be set for MQTT
+HADevice device(MQTT_TOPIC_NAME);
+HAMqtt mqtt(client, device);
+// By default HAHVAC supports only reporting of the temperature.
+// You can enable feature you need using the second argument of the constructor.
+// Please check the documentation of the HAHVAC class.
+HAHVAC hvac(
+  "boiler",
+  HAHVAC::TargetTemperatureFeature | HAHVAC::PowerFeature | HAHVAC::ModesFeature
+);
+
+unsigned long lastTempPublishAt = 0;
+float lastTemp = 0;
+
+void onTargetTemperatureCommand(HANumeric temperature, HAHVAC* sender) {
+    float temperatureFloat = temperature.toFloat();
+
+    Serial.print("Target temperature: ");
+    Serial.println(temperatureFloat);
+
+    sender->setTargetTemperature(temperature); // report target temperature back to the HA panel
+}
+
+void onPowerCommand(bool state, HAHVAC* sender) {
+  if (state) {
+    Serial.println("Power on");
+  } else {
+    Serial.println("Power off");
+  }
+}
+
+
+void onModeCommand(HAHVAC::Mode mode, HAHVAC* sender) {
+    Serial.print("Mode: ");
+    if (mode == HAHVAC::OffMode) {
+        Serial.println("off");
+    } else if (mode == HAHVAC::AutoMode) {
+        Serial.println("auto");
+    } else if (mode == HAHVAC::CoolMode) {
+        Serial.println("cool");
+    } else if (mode == HAHVAC::HeatMode) {
+        Serial.println("heat");
+    } else if (mode == HAHVAC::DryMode) {
+        Serial.println("dry");
+    } else if (mode == HAHVAC::FanOnlyMode) {
+        Serial.println("fan only");
+    }
+
+    sender->setMode(mode); // report mode back to the HA panel
+}
+
 void setup() {
 
   Serial.begin(115200);
@@ -89,12 +148,40 @@ void setup() {
   dimmer1.begin(NORMAL_MODE, ON); 
   pinMode(Relay1, OUTPUT);
   digitalWrite(Relay1, LOW);
+
+
+
+
   WiFi.mode(WIFI_STA); //Optional
   WiFi.begin(ssid, password);
   server.begin();
+
+
+
   delay(100);
 
 
+  // set device's details (optional)
+  device.setName("NodeMCU");
+  device.setSoftwareVersion("1.0.0");
+
+  // assign callbacks (optional)
+  hvac.onTargetTemperatureCommand(onTargetTemperatureCommand);
+  hvac.onPowerCommand(onPowerCommand);
+  hvac.onModeCommand(onModeCommand);
+
+  // configure HVAC (optional)
+  hvac.setName("My HVAC");
+  hvac.setMinTemp(10);
+  hvac.setMaxTemp(30);
+  hvac.setTempStep(0.5);
+
+  // You can set retain flag for the HA commands
+  // hvac.setRetain(true);
+
+  // You can choose which modes should be available in the HA panel
+  // hvac.setModes(HAHVAC::OffMode | HAHVAC::CoolMode);
+  mqtt.begin(MQTT_BROKER_IP, MQTT_USER, MQTT_PASSWORD);
 
   //Code pour créer un Task Core 0//
   xTaskCreatePinnedToCore(
@@ -473,6 +560,13 @@ else
 
         u8g2.sendBuffer();  // l'image qu'on vient de construire est affichée à l'écran
 
+    mqtt.loop();
+    // Send temp every 3 seconds
+    if ((millis() - lastTempPublishAt) > 3000) {
+        hvac.setCurrentTemperature(lastTemp);
+        lastTempPublishAt = millis();
+        lastTemp += 0.5;
+    }
 
 }
 }
