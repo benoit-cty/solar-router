@@ -3,7 +3,15 @@ ESP32 code for a diy Solar Energy Router to manage overproduction
 
 Based on the code from [Le Profes'Solaire](https://sites.google.com/view/le-professolaire/routeur-professolaire).
 
-My goal is to add support of MQTT to connect it to Home Assistant.
+Features:
+- Support two dimmers and one relay
+- MQTT with Home Assistant auto-discovery
+- Screen display
+- Embeded webserver for monitoring
+
+## 3D Printing
+
+An enclosure is available at https://www.thingiverse.com/thing:6003867 to be printed. The height as not been calculated for jumper wire, but for soldering wire, which is more secure.
 
 ## Debug tools
 ### Modbus
