@@ -71,6 +71,7 @@ if config[0] == 261:
     MinimalModbus debug mode. Sleeping 7.53 ms before sending. Minimum silent period: 8.02 ms, time since read: 0.49 ms.
     MinimalModbus debug mode. Response from instrument: 01 10 00 04 00 01 40 08 (8 bytes), roundtrip time: 0.1 ms. Timeout for reading: 0.0 ms.
     """
-## Read all
-measures = instrument.read_registers(0x48, 14)  # Registernumber, number of decimals
-print("💡 Data", measures)
+    print("Speed has been changed !")
+## Read all, but it does not work. It is not a problem as it will works in the pv router.
+# measures = instrument.read_registers(0x48, 14)  # Registernumber, number of decimals
+# print("💡 Data", measures)
