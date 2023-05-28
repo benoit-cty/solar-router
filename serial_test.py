@@ -30,7 +30,6 @@ for speed in speeds:
         print("\tResponse length: ",len(answer))
         # 1 address + 1 fonction + 1 longueur + 14 * 4 + 2crc = 61
         if len(answer) == 9 and answer == b'\x01\x03\x04\x01\x94\x01\x14\xbb\xbc':
-            # TODO: Expected answeer 0x01 0x03 0x38 ....
             print(f"😋 OK, Found a JSY sensor model 0x01 0x94 running at {speed} bps.")
             default_speed = speed
             print("\tResponse: ",answer)
