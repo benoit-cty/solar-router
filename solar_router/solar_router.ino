@@ -43,7 +43,7 @@ WiFiClient client;
 
 byte SensorData[62];
 int ByteData[20];
-long baudRates[] = { 4800, 9600, 19200, 38400, 57600, 115200 };  // array of baud rates to test
+long baudRates[] = { 38400, 4800, 9600, 19200, 57600, 115200 };  // array of baud rates to test
 int numBaudRates = 6;                                            // number of baud rates to test
 
 
@@ -141,37 +141,37 @@ void setup() {
   // Code pour créer un Task Core 1//
   xTaskCreatePinnedToCore(
     Task_Compute, /* Task function. */
-    "Compute",                /* name of task. */
-    10000,                  /* Stack size of task */
-    NULL,                   /* parameter of the task */
-    1,                      /* priority of the task */
-    &Task2,                 /* Task handle to keep track of created task */
-    1);                     /* pin task to core 1 */
+    "Compute",    /* name of task. */
+    10000,        /* Stack size of task */
+    NULL,         /* parameter of the task */
+    1,            /* priority of the task */
+    &Task2,       /* Task handle to keep track of created task */
+    1);           /* pin task to core 1 */
 #ifdef USE_SCREEN
   xTaskCreatePinnedToCore(
     Task_Screen, /* Task function. */
     "Screen",    /* name of task. */
-    10000,     /* Stack size of task */
-    NULL,      /* parameter of the task */
-    2,         /* priority of the task */
-    &Task3,    /* Task handle to keep track of created task */
-    1);        /* pin task to core 1 */
+    40000,       /* Stack size of task */
+    NULL,        /* parameter of the task */
+    2,           /* priority of the task */
+    &Task3,      /* Task handle to keep track of created task */
+    1);          /* pin task to core 1 */
 #endif
 #ifdef USE_DASHBOARD
   xTaskCreatePinnedToCore(
     Task_Dashboard, /* Task function. */
     "Dashboard",    /* name of task. */
-    10000,     /* Stack size of task */
-    NULL,      /* parameter of the task */
-    2,         /* priority of the task */
-    &Task3,    /* Task handle to keep track of created task */
-    1);        /* pin task to core 1 */
+    40000,          /* Stack size of task */
+    NULL,           /* parameter of the task */
+    2,              /* priority of the task */
+    &Task3,         /* Task handle to keep track of created task */
+    1);             /* pin task to core 1 */
 #endif
 #ifdef USE_MQTT
   xTaskCreatePinnedToCore(
     Task_MQTT, /* Task function. */
     "MQTT",    /* name of task. */
-    10000,     /* Stack size of task */
+    40000,     /* Stack size of task */
     NULL,      /* parameter of the task */
     2,         /* priority of the task */
     &Task3,    /* Task handle to keep track of created task */
@@ -315,7 +315,25 @@ void ReadPowerMeter() {
     Serial.print("W Power2:");
     Serial.print(Power2);
     Serial.print("W PowerFactor2:");
-    Serial.println(PowerFactor2);
+    Serial.print(PowerFactor2);
+    Serial.print(" WiFi.status:");
+    Serial.println(WiFi.status());
+    /* WiFi.status :
+    WL_IDLE_STATUS      = 0,
+    WL_NO_SSID_AVAIL    = 1,
+    WL_SCAN_COMPLETED   = 2,
+    WL_CONNECTED        = 3,
+    WL_CONNECT_FAILED   = 4,
+    WL_CONNECTION_LOST  = 5,
+    WL_WRONG_PASSWORD   = 6,
+    WL_DISCONNECTED     = 7
+    */
+    // if WiFi is down, try reconnecting
+    if (WiFi.status() != WL_CONNECTED) {
+      Serial.println(" - WARNING - ReadPowerMeter() - WiFi Lost, reconnecting ...");
+      WiFi.disconnect();
+      WiFi.reconnect();
+    }
     lastPrint = millis();
   }
 }
@@ -498,7 +516,7 @@ void Task_Compute(void *pvParameters) {
 void Task_Screen(void *pvParameters) {
   for (;;) {
     screen_loop(Voltage, Intensite1, Power1, Energy1, EnergySavedDaily, Frequency, PowerFactor2, Intensite2, Power2,
-                   Energy2, ajustePuissance, valDim1, valDim2, Auto);
+                Energy2, ajustePuissance, valDim1, valDim2, Auto);
   }
 }
 #endif
@@ -506,7 +524,6 @@ void Task_Screen(void *pvParameters) {
 // affichage page web //
 void Task_Dashboard(void *pvParameters) {
   for (;;) {
-
     dashboard_loop(Voltage, Intensite1, Power1, Energy1, EnergySavedDaily, Frequency, PowerFactor2, Intensite2, Power2,
                    Energy2, ajustePuissance, valDim1, valDim2, Auto);
   }
@@ -514,9 +531,13 @@ void Task_Dashboard(void *pvParameters) {
 #endif
 #ifdef USE_MQTT
 void Task_MQTT(void *pvParameters) {
+  const TickType_t taskPeriod = 10 * 1000;  // In ms
+  TickType_t xLastWakeTime = xTaskGetTickCount();
   for (;;) {
     mqtt_loop(Voltage, Intensite1, Power1, Energy1, Frequency, PowerFactor2, Intensite2, Power2,
               Energy2, ajustePuissance, valDim1, valDim2, Auto);
+
+    vTaskDelayUntil(&xLastWakeTime, taskPeriod);
   }
 }
 #endif

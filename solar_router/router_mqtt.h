@@ -33,8 +33,6 @@ HASensorNumber ha_dimmer2_output("dimmer2", HASensorNumber::PrecisionP1);
 // Mode Auto ON/OFF
 HASensorNumber ha_mode("mode_auto", HASensorNumber::PrecisionP0);
 
-unsigned long lastMqttPublishAt = 0;
-
 void setup_mqtt() {
   // set device's details (optional)
   device.setName("Solar PV router");
@@ -56,21 +54,18 @@ void setup_mqtt() {
 void mqtt_loop(float Voltage, float Intensite1, float Power1, float Energy1, float Frequency, float PowerFactor2, float Intensite2, float Power2,
                float Energy2, float ajustePuissance, float valDim1, float valDim2, boolean Auto) {
   // Send values to Home Assistant every 10 seconds
-  if ((millis() - lastMqttPublishAt) > 10000) {
-    ha_voltage.setValue(Voltage);
-    ha_current1.setValue(Intensite1);
-    ha_power1.setValue(Power1);
-    ha_energy1.setValue(Energy1);
-    ha_frequency.setValue(Frequency);
-    ha_PowerFactor2.setValue(PowerFactor2);
-    ha_current2.setValue(Intensite2);
-    ha_power2.setValue(Power2);
-    ha_energy2.setValue(Energy2);
-    ha_energy_saved.setValue(ajustePuissance);
-    ha_dimmer1_output.setValue(valDim1);
-    ha_dimmer2_output.setValue(valDim2);
-    ha_mode.setValue(Auto);
-    lastMqttPublishAt = millis();
-    mqtt.loop();
-  }
+  ha_voltage.setValue(Voltage);
+  ha_current1.setValue(Intensite1);
+  ha_power1.setValue(Power1);
+  ha_energy1.setValue(Energy1);
+  ha_frequency.setValue(Frequency);
+  ha_PowerFactor2.setValue(PowerFactor2);
+  ha_current2.setValue(Intensite2);
+  ha_power2.setValue(Power2);
+  ha_energy2.setValue(Energy2);
+  ha_energy_saved.setValue(ajustePuissance);
+  ha_dimmer1_output.setValue(valDim1);
+  ha_dimmer2_output.setValue(valDim2);
+  ha_mode.setValue(Auto);
+  mqtt.loop();
 }
